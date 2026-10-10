@@ -1,20 +1,37 @@
-/* Family Budget
-   Sections: state/storage, formatting, rendering, charts, import/export, events.
-   localStorage keys match the previous Family Budget app:
-   budgetSettings, budgetCategories, budgetTemplates, familyBudget_v<year>.
-   CSV columns match exportToCSV: Year,Month,Date,Description,Category,Type,Amount,Currency.
+/* Family Budget NL
+   Nederlands (nl-NL). Secties: state/storage, formatting, rendering, charts, import/export, events.
+   Opslag staat los van de Engelse Family Budget-app (zelfde github.io-origin):
+   budgetSettingsNL, budgetCategoriesNL, budgetTemplatesNL, familyBudgetNL_v<year>.
+   CSV: Jaar,Maand,Datum,Omschrijving,Categorie,Soort,Bedrag,Valuta.
+   Importeren leest ook Engelse maandnamen en de soorten expense/income.
 */
 
+const LOCALE = 'nl-NL';
+const APP_NAME = 'Family Budget NL';
+const FALLBACK_CATEGORY = 'Overig';
+const RESET_WORD = 'WISSEN';
+const KEY_SETTINGS = 'budgetSettingsNL';
+const KEY_CATEGORIES = 'budgetCategoriesNL';
+const KEY_TEMPLATES = 'budgetTemplatesNL';
+const YEAR_PREFIX = 'familyBudgetNL_v';
+
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  'januari', 'februari', 'maart', 'april', 'mei', 'juni',
+  'juli', 'augustus', 'september', 'oktober', 'november', 'december'
 ];
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'THB', 'CAD', 'AUD', 'INR', 'BRL'];
+const MONTHS_SHORT = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+
+const MONTHS_EN = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december'
+];
+
+const CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'THB', 'CAD', 'AUD', 'INR', 'BRL'];
 
 const DEFAULT_CATEGORIES = [
-  'Housing', 'Food', 'Transport', 'Utilities',
-  'Entertainment', 'Healthcare', 'Salary', 'Other'
+  'Wonen', 'Boodschappen', 'Vervoer', 'Energie',
+  'Vrije tijd', 'Zorg', 'Salaris', 'Overig'
 ];
 
 const ACCENT_VARS = [
@@ -31,7 +48,7 @@ let allTransactions = readYear(settings.year);
 let currentMonthIdx = new Date().getMonth();
 let currentView = 'month';
 let selectedType = 'expense';
-let selectedCategory = categories[0] || 'Other';
+let selectedCategory = categories[0] || FALLBACK_CATEGORY;
 let statusTimer = 0;
 
 const charts = { pie: null, bar: null, year: null, dist: null };
@@ -54,38 +71,38 @@ function persist(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
   } catch (err) {
-    announce('Could not save. Browser storage may be full or blocked.');
+    announce('Opslaan lukte niet. De browseropslag is vol of geblokkeerd.');
     return false;
   }
 }
 
 function yearKey(year) {
-  return `familyBudget_v${year}`;
+  return `${YEAR_PREFIX}${year}`;
 }
 
 function loadSettings() {
   const now = new Date().getFullYear();
-  const saved = readJSON('budgetSettings', null);
+  const saved = readJSON(KEY_SETTINGS, null);
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) {
-    return { familyName: '', year: now, currency: 'THB' };
+    return { familyName: '', year: now, currency: 'EUR' };
   }
   const year = parseInt(saved.year, 10);
   return {
     familyName: typeof saved.familyName === 'string' ? saved.familyName : '',
     year: year >= 2000 && year <= 2100 ? year : now,
-    currency: CURRENCIES.includes(saved.currency) ? saved.currency : 'THB'
+    currency: CURRENCIES.includes(saved.currency) ? saved.currency : 'EUR'
   };
 }
 
 function loadCategories() {
-  const saved = readJSON('budgetCategories', null);
+  const saved = readJSON(KEY_CATEGORIES, null);
   if (!Array.isArray(saved) || saved.length === 0) return DEFAULT_CATEGORIES.slice();
   const names = saved.map(name => String(name || '').trim()).filter(Boolean);
   return names.length ? names : DEFAULT_CATEGORIES.slice();
 }
 
 function loadTemplates() {
-  const saved = readJSON('budgetTemplates', null);
+  const saved = readJSON(KEY_TEMPLATES, null);
   if (!Array.isArray(saved)) return [];
   return saved.filter(item => item && typeof item === 'object');
 }
@@ -103,22 +120,23 @@ function writeYear(year, data) {
 }
 
 function saveSettings() {
-  return persist('budgetSettings', settings);
+  return persist(KEY_SETTINGS, settings);
 }
 
 function saveCategories() {
-  return persist('budgetCategories', categories);
+  return persist(KEY_CATEGORIES, categories);
 }
 
 function saveTemplates() {
-  return persist('budgetTemplates', templates);
+  return persist(KEY_TEMPLATES, templates);
 }
 
 function listYearKeys() {
   const keys = [];
+  const yearKeyPattern = new RegExp(`^${YEAR_PREFIX}\\d+$`);
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (/^familyBudget_v\d+$/.test(key || '')) keys.push(key);
+    if (yearKeyPattern.test(key || '')) keys.push(key);
   }
   const current = yearKey(settings.year);
   if (!keys.includes(current)) keys.push(current);
@@ -136,7 +154,7 @@ function eachYear(mutator) {
 }
 
 /* Rows imported by the old app for a different year were stored inside the
-   open year's blob. Move those keys into familyBudget_v<that year>. */
+   open year's blob. Move those keys into familyBudgetNL_v<that year>. */
 function migrateMisfiledYears() {
   const foreign = {};
   let moved = false;
@@ -193,19 +211,19 @@ function formatMoney(amount) {
   const value = Number(amount);
   const safe = Number.isFinite(value) ? value : 0;
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(LOCALE, {
       style: 'currency',
       currency: settings.currency
     }).format(safe);
   } catch (err) {
-    return safe.toFixed(2);
+    return safe.toFixed(2).replace('.', ',');
   }
 }
 
 function formatCompact(amount) {
   const value = Number(amount) || 0;
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(LOCALE, {
       style: 'currency',
       currency: settings.currency,
       notation: 'compact',
@@ -223,7 +241,32 @@ function formatDate(value) {
     ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
     : new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' });
+}
+
+function monthIndex(name) {
+  const key = String(name || '').trim().toLowerCase();
+  if (!key) return -1;
+  let idx = MONTHS.indexOf(key);
+  if (idx === -1) idx = MONTHS_EN.indexOf(key);
+  if (idx === -1) idx = MONTHS_SHORT.indexOf(key);
+  return idx;
+}
+
+function monthTitle(idx) {
+  const name = MONTHS[idx] || '';
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : '';
+}
+
+function monthShort(idx) {
+  const name = MONTHS_SHORT[idx] || '';
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : '';
+}
+
+function normalizeType(value) {
+  const key = String(value || '').trim().toLowerCase();
+  if (key === 'income' || key === 'inkomst' || key === 'inkomsten' || key === 'inkomen') return 'income';
+  return 'expense';
 }
 
 function toDateInputValue(date) {
@@ -295,7 +338,7 @@ function csvEscape(value) {
 }
 
 function buildCSV(yearData, year, currency) {
-  let csv = 'Year,Month,Date,Description,Category,Type,Amount,Currency\n';
+  let csv = 'Jaar,Maand,Datum,Omschrijving,Categorie,Soort,Bedrag,Valuta\n';
   Object.keys(yearData).filter(key => key.startsWith(`${year}_`)).forEach(key => {
     const monthIdx = Number(key.split('_')[1]);
     if (!MONTHS[monthIdx] || !Array.isArray(yearData[key])) return;
@@ -306,7 +349,7 @@ function buildCSV(yearData, year, currency) {
         row.date,
         csvEscape(row.desc),
         csvEscape(row.category),
-        row.type,
+        normalizeType(row.type) === 'income' ? 'inkomst' : 'uitgave',
         row.amount,
         currency
       ].join(',') + '\n';
@@ -373,25 +416,25 @@ function announce(message) {
 
 function syncChrome() {
   const name = familyLine();
-  document.title = name ? `${name} · Family Budget` : 'Family Budget';
-  const monthName = `${MONTHS[currentMonthIdx]} ${settings.year}`;
-  const monthTitle = document.getElementById('monthTitle');
+  document.title = name ? `${name} · ${APP_NAME}` : APP_NAME;
+  const monthName = `${monthTitle(currentMonthIdx)} ${settings.year}`;
+  const monthHeading = document.getElementById('monthTitle');
   const monthCurrent = document.getElementById('monthCurrent');
   const tableTitle = document.getElementById('tableTitle');
-  if (monthTitle) monthTitle.textContent = monthName;
+  if (monthHeading) monthHeading.textContent = monthName;
   if (monthCurrent) monthCurrent.textContent = monthName;
-  if (tableTitle) tableTitle.textContent = `${monthName} transactions`;
+  if (tableTitle) tableTitle.textContent = `Transacties in ${monthName}`;
   const lede = document.getElementById('monthLede');
-  if (lede) lede.textContent = name || 'Income, expenses, and what is left this month.';
+  if (lede) lede.textContent = name || 'Inkomsten, uitgaven en wat er deze maand overblijft.';
   const yearTitle = document.getElementById('yearTitle');
   const yearLede = document.getElementById('yearLede');
   if (yearTitle) yearTitle.textContent = String(settings.year);
-  if (yearLede) yearLede.textContent = name ? `${name} · income and expenses for the year.` : 'Income and expenses for the year.';
+  if (yearLede) yearLede.textContent = name ? `${name} · inkomsten en uitgaven van het jaar.` : 'Inkomsten en uitgaven van het jaar.';
   const catLede = document.getElementById('catLede');
-  if (catLede) catLede.textContent = name ? `${name} · spending by category in ${settings.year}.` : `Spending by category in ${settings.year}.`;
+  if (catLede) catLede.textContent = name ? `${name} · uitgaven per categorie in ${settings.year}.` : `Uitgaven per categorie in ${settings.year}.`;
   const printSubtitle = document.getElementById('printSubtitle');
   if (printSubtitle) {
-    const scope = currentView === 'year' ? String(settings.year) : currentView === 'categories' ? `${settings.year} categories` : monthName;
+    const scope = currentView === 'year' ? String(settings.year) : currentView === 'categories' ? `Categorieën ${settings.year}` : monthName;
     printSubtitle.textContent = [name, scope, settings.currency].filter(Boolean).join(' · ');
   }
 }
@@ -409,7 +452,7 @@ function renderMonthTabs() {
       id: `month-tab-${idx}`,
       'aria-selected': selected ? 'true' : 'false',
       tabindex: selected ? '0' : '-1',
-      text: name.slice(0, 3),
+      text: monthShort(idx),
       onclick: () => switchMonth(idx)
     }));
   });
@@ -436,7 +479,7 @@ function syncDateBounds() {
 function renderCategoryPills() {
   const container = document.getElementById('categorySelector');
   if (!container) return;
-  if (!categories.includes(selectedCategory)) selectedCategory = categories[0] || 'Other';
+  if (!categories.includes(selectedCategory)) selectedCategory = categories[0] || FALLBACK_CATEGORY;
   container.replaceChildren();
   categories.forEach(name => {
     const pressed = name === selectedCategory;
@@ -484,7 +527,7 @@ function renderTransactions() {
     const tr = el('tr', {}, [
       el('td', { class: 'col-date', text: formatDate(row.date) }),
       el('td', { class: 'col-desc', text: row.desc || '' }),
-      el('td', { class: 'col-cat' }, [el('span', { class: `pill ${pillClass(row.category)}`, text: row.category || 'Other' })]),
+      el('td', { class: 'col-cat' }, [el('span', { class: `pill ${pillClass(row.category)}`, text: row.category || FALLBACK_CATEGORY })]),
       el('td', {
         class: `col-amt num ${expense ? 'amt-expense' : 'amt-income'}`,
         text: `${expense ? '−' : '+'}${formatMoney(Math.abs(row.amount))}`
@@ -493,8 +536,8 @@ function renderTransactions() {
         el('button', {
           type: 'button',
           class: 'btn btn-outlined icon-btn',
-          'aria-label': `Delete ${row.desc || 'transaction'}`,
-          text: 'Delete',
+          'aria-label': `Verwijder ${row.desc || 'transactie'}`,
+          text: 'Verwijderen',
           onclick: () => deleteTransaction(row.id)
         })
       ])
@@ -509,7 +552,7 @@ function renderTransactions() {
   setMoney('totalExpense', totals.expense, 'expense');
   const live = document.getElementById('totalsLive');
   if (live && currentView === 'month') {
-    live.textContent = `${MONTHS[currentMonthIdx]} ${settings.year}. Balance ${formatMoney(totals.net)}. Income ${formatMoney(totals.income)}. Expenses ${formatMoney(totals.expense)}.`;
+    live.textContent = `${monthTitle(currentMonthIdx)} ${settings.year}. Saldo ${formatMoney(totals.net)}. Inkomsten ${formatMoney(totals.income)}. Uitgaven ${formatMoney(totals.expense)}.`;
   }
 }
 
@@ -518,7 +561,7 @@ function renderTemplates() {
   if (!container) return;
   container.replaceChildren();
   if (!templates.length) {
-    container.append(el('li', { class: 'empty-state', text: 'No quick adds yet. Fill in a transaction and choose Save as template.' }));
+    container.append(el('li', { class: 'empty-state', text: 'Nog geen snel toevoegen. Vul een transactie in en kies Opslaan als sjabloon.' }));
     return;
   }
   templates.forEach(item => {
@@ -539,7 +582,7 @@ function renderTemplates() {
       el('button', {
         type: 'button',
         class: 'btn btn-outlined icon-btn',
-        'aria-label': `Delete template ${item.desc || ''}`,
+        'aria-label': `Verwijder sjabloon ${item.desc || ''}`,
         text: '✕',
         onclick: () => deleteTemplate(item.id)
       })
@@ -562,14 +605,14 @@ function renderYear() {
     body.replaceChildren();
     stats.forEach((item, idx) => {
       body.append(el('tr', {}, [
-        el('td', { text: MONTHS[idx] }),
+        el('td', { text: monthTitle(idx) }),
         el('td', { class: 'num amt-income', text: formatMoney(item.income) }),
         el('td', { class: 'num amt-expense', text: formatMoney(item.expense) }),
         el('td', { class: `num ${item.net < 0 ? 'amt-neg' : ''}`, text: formatMoney(item.net) })
       ]));
     });
     body.append(el('tr', { class: 'total-row' }, [
-      el('td', { text: 'Total' }),
+      el('td', { text: 'Totaal' }),
       el('td', { class: 'num', text: formatMoney(totals.income) }),
       el('td', { class: 'num', text: formatMoney(totals.expense) }),
       el('td', { class: 'num', text: formatMoney(totals.net) })
@@ -577,7 +620,7 @@ function renderYear() {
   }
   const live = document.getElementById('totalsLive');
   if (live && currentView === 'year') {
-    live.textContent = `${settings.year}. Net ${formatMoney(totals.net)}. Income ${formatMoney(totals.income)}. Expenses ${formatMoney(totals.expense)}.`;
+    live.textContent = `${settings.year}. Netto ${formatMoney(totals.net)}. Inkomsten ${formatMoney(totals.income)}. Uitgaven ${formatMoney(totals.expense)}.`;
   }
   updateYearChart(stats);
 }
@@ -590,7 +633,7 @@ function expenseByCategory(data, year) {
     if (!Array.isArray(rows)) return;
     rows.forEach(row => {
       if (!row || row.type === 'income') return;
-      const name = row.category || 'Other';
+      const name = row.category || FALLBACK_CATEGORY;
       const amount = Number(row.amount) || 0;
       totals[name] = (totals[name] || 0) + amount;
       total += amount;
@@ -607,7 +650,7 @@ function renderCategories() {
   if (body) {
     body.replaceChildren();
     if (!sorted.length) {
-      body.append(el('tr', {}, [el('td', { colspan: '3', text: 'No expenses this year' })]));
+      body.append(el('tr', {}, [el('td', { colspan: '3', text: 'Geen uitgaven dit jaar' })]));
     } else {
       sorted.forEach(([name, amount]) => {
         const pct = total > 0 ? ((amount / total) * 100).toFixed(1) : '0.0';
@@ -618,7 +661,7 @@ function renderCategories() {
         ]));
       });
       body.append(el('tr', { class: 'total-row' }, [
-        el('td', { text: 'Total' }),
+        el('td', { text: 'Totaal' }),
         el('td', { class: 'num', text: formatMoney(total) }),
         el('td', { class: 'num', text: '100%' })
       ]));
@@ -634,21 +677,21 @@ function renderCategoryManager() {
   if (!list) return;
   list.replaceChildren();
   categories.forEach(name => {
-    const input = el('input', { type: 'text', value: name, maxlength: '40', 'aria-label': `Rename ${name}` });
+    const input = el('input', { type: 'text', value: name, maxlength: '40', 'aria-label': `Hernoem ${name}` });
     const row = el('li', { class: 'cat-row' }, [
       el('span', { class: 'swatch', style: `background:${categoryColor(name)}`, 'aria-hidden': 'true' }),
       el('div', { class: 'input-group' }, [input]),
       el('button', {
         type: 'button',
         class: 'btn btn-outlined',
-        text: 'Rename',
+        text: 'Hernoemen',
         onclick: () => renameCategory(name, input.value)
       }),
       el('button', {
         type: 'button',
         class: 'btn btn-danger',
-        text: 'Delete',
-        disabled: categories.length < 2 || name === 'Other',
+        text: 'Verwijderen',
+        disabled: categories.length < 2 || name === FALLBACK_CATEGORY,
         onclick: () => deleteCategory(name)
       })
     ]);
@@ -704,7 +747,7 @@ function closeNav() {
   if (header) header.classList.remove('nav-open');
   if (toggle) {
     toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', 'Open menu');
+    toggle.setAttribute('aria-label', 'Menu openen');
   }
 }
 
@@ -720,12 +763,12 @@ function readForm() {
     return null;
   };
   if (error) error.textContent = '';
-  if (!desc) return fail('Add a description.');
-  if (!Number.isFinite(amount) || amount === 0) return fail('Enter an amount greater than zero.');
-  if (!dateValue) return fail('Choose a date in this month.');
+  if (!desc) return fail('Vul een omschrijving in.');
+  if (!Number.isFinite(amount) || amount === 0) return fail('Vul een bedrag groter dan nul in.');
+  if (!dateValue) return fail('Kies een datum in deze maand.');
   const bounds = document.getElementById('txDate');
-  if (dateValue < bounds.min || dateValue > bounds.max) return fail('Choose a date in the month you are viewing.');
-  if (!selectedCategory) return fail('Choose a category.');
+  if (dateValue < bounds.min || dateValue > bounds.max) return fail('Kies een datum in de maand die je bekijkt.');
+  if (!selectedCategory) return fail('Kies een categorie.');
   return {
     desc,
     amount: Math.abs(amount),
@@ -756,10 +799,10 @@ function handleFormSubmit(event) {
   addTransaction(entry);
   event.target.reset();
   setFormType('expense');
-  selectedCategory = categories[0] || 'Other';
+  selectedCategory = categories[0] || FALLBACK_CATEGORY;
   syncDateBounds();
   renderCategoryPills();
-  announce(`Saved ${entry.desc}.`);
+  announce(`${entry.desc} opgeslagen.`);
 }
 
 function deleteTransaction(id) {
@@ -779,7 +822,7 @@ function saveAsTemplate() {
   });
   saveTemplates();
   renderTemplates();
-  announce(`Saved “${entry.desc}” as a quick add.`);
+  announce(`“${entry.desc}” opgeslagen als snel toevoegen.`);
 }
 
 function deleteTemplate(id) {
@@ -794,21 +837,21 @@ function addFromTemplate(item) {
     desc: item.desc,
     amount: Math.abs(Number(item.amount) || 0),
     type: item.type === 'income' ? 'income' : 'expense',
-    category: categories.includes(item.category) ? item.category : 'Other',
+    category: categories.includes(item.category) ? item.category : FALLBACK_CATEGORY,
     date: isoFromDateInput(dateInput && dateInput.value)
   });
-  announce(`Added ${item.desc}.`);
+  announce(`${item.desc} toegevoegd.`);
 }
 
 function addCategory(name) {
   const trimmed = String(name || '').trim();
   const error = document.getElementById('categoryError');
   if (!trimmed) {
-    if (error) error.textContent = 'Enter a category name.';
+    if (error) error.textContent = 'Vul een categorienaam in.';
     return false;
   }
   if (categories.some(item => item.toLowerCase() === trimmed.toLowerCase())) {
-    if (error) error.textContent = `${trimmed} is already a category.`;
+    if (error) error.textContent = `${trimmed} is al een categorie.`;
     return false;
   }
   categories.push(trimmed);
@@ -822,13 +865,13 @@ function renameCategory(oldName, nextName) {
   const name = String(nextName || '').trim();
   const error = document.getElementById('categoryError');
   if (!name) {
-    if (error) error.textContent = 'Enter a category name.';
+    if (error) error.textContent = 'Vul een categorienaam in.';
     renderCategoryManager();
     return;
   }
   if (name === oldName) return;
   if (categories.some(item => item.toLowerCase() === name.toLowerCase())) {
-    if (error) error.textContent = `${name} is already a category.`;
+    if (error) error.textContent = `${name} is al een categorie.`;
     return;
   }
   categories = categories.map(item => (item === oldName ? name : item));
@@ -848,7 +891,7 @@ function renameCategory(oldName, nextName) {
   saveTemplates();
   if (error) error.textContent = '';
   refreshVisible();
-  announce(`Renamed ${oldName} to ${name}.`);
+  announce(`${oldName} hernoemd naar ${name}.`);
 }
 
 function countCategory(name) {
@@ -866,35 +909,35 @@ function countCategory(name) {
 }
 
 function deleteCategory(name) {
-  if (name === 'Other') {
+  if (name === FALLBACK_CATEGORY) {
     const error = document.getElementById('categoryError');
-    if (error) error.textContent = 'Other is the fallback category and stays in the list.';
+    if (error) error.textContent = 'Overig is de reservecategorie en blijft in de lijst.';
     return;
   }
   if (categories.length < 2) return;
   const count = countCategory(name);
   const message = count
-    ? `Delete “${name}”? ${count} transaction${count === 1 ? '' : 's'} will move to Other.`
-    : `Delete “${name}”?`;
+    ? `“${name}” verwijderen? ${count} ${count === 1 ? 'transactie gaat' : 'transacties gaan'} naar Overig.`
+    : `“${name}” verwijderen?`;
   if (!window.confirm(message)) return;
-  if (!categories.includes('Other')) categories.push('Other');
+  if (!categories.includes(FALLBACK_CATEGORY)) categories.push(FALLBACK_CATEGORY);
   categories = categories.filter(item => item !== name);
-  if (selectedCategory === name) selectedCategory = 'Other';
+  if (selectedCategory === name) selectedCategory = FALLBACK_CATEGORY;
   saveCategories();
   eachYear(data => {
     Object.keys(data).forEach(key => {
       if (!Array.isArray(data[key])) return;
       data[key].forEach(row => {
-        if (row && row.category === name) row.category = 'Other';
+        if (row && row.category === name) row.category = FALLBACK_CATEGORY;
       });
     });
   });
   templates.forEach(item => {
-    if (item.category === name) item.category = 'Other';
+    if (item.category === name) item.category = FALLBACK_CATEGORY;
   });
   saveTemplates();
   refreshVisible();
-  announce(`Deleted ${name}.`);
+  announce(`${name} verwijderd.`);
 }
 
 function refreshVisible() {
@@ -981,7 +1024,7 @@ function ensureMonthCharts() {
   charts.bar = new Chart(document.getElementById('barChart'), {
     type: 'bar',
     data: {
-      labels: ['Income', 'Expenses'],
+      labels: ['Inkomsten', 'Uitgaven'],
       datasets: [{
         data: [0, 0],
         backgroundColor: [cssVar('--nt-blue') || '#0075de', cssVar('--nt-coral') || '#f64932'],
@@ -1001,10 +1044,10 @@ function ensureYearChart() {
     charts.year = new Chart(document.getElementById('yearlyChart'), {
       type: 'line',
       data: {
-        labels: MONTHS.map(name => name.slice(0, 3)),
+        labels: MONTHS_SHORT.map((_, idx) => monthShort(idx)),
         datasets: [
           {
-            label: 'Income',
+            label: 'Inkomsten',
             data: [],
             borderColor: cssVar('--nt-blue') || '#0075de',
             backgroundColor: 'transparent',
@@ -1014,7 +1057,7 @@ function ensureYearChart() {
             pointBackgroundColor: cssVar('--nt-blue') || '#0075de'
           },
           {
-            label: 'Expenses',
+            label: 'Uitgaven',
             data: [],
             borderColor: cssVar('--nt-coral') || '#f64932',
             backgroundColor: 'transparent',
@@ -1051,7 +1094,7 @@ function updateMonthCharts() {
     const amount = Number(row.amount) || 0;
     if (row.type === 'income') income += amount;
     else {
-      const name = row.category || 'Other';
+      const name = row.category || FALLBACK_CATEGORY;
       buckets[name] = (buckets[name] || 0) + amount;
       expense += amount;
     }
@@ -1115,7 +1158,7 @@ function importCsvText(text) {
       return;
     }
     const [year, monthStr, date, desc, category, type, amount] = cols;
-    const monthIdx = MONTHS.indexOf(monthStr);
+    const monthIdx = monthIndex(monthStr);
     if (!/^\d{4}$/.test(year) || monthIdx === -1) {
       skipped += 1;
       return;
@@ -1125,7 +1168,7 @@ function importCsvText(text) {
       skipped += 1;
       return;
     }
-    const categoryName = category || 'Other';
+    const categoryName = category || FALLBACK_CATEGORY;
     if (!categories.some(item => item.toLowerCase() === categoryName.toLowerCase())) {
       categories.push(categoryName);
       categoriesChanged = true;
@@ -1135,9 +1178,9 @@ function importCsvText(text) {
     if (!Array.isArray(byYear[year][key])) byYear[year][key] = [];
     byYear[year][key].push({
       id: Date.now() + Math.random(),
-      desc: desc || 'Imported',
+      desc: desc || 'Geïmporteerd',
       amount: Math.abs(parsed),
-      type: type === 'income' ? 'income' : 'expense',
+      type: normalizeType(type),
       category: categoryName,
       date: date || new Date().toISOString()
     });
@@ -1150,21 +1193,21 @@ function importCsvText(text) {
 
 function exportToCSV() {
   const csv = buildCSV(allTransactions, settings.year, settings.currency);
-  const name = `Budget_${settings.familyName || 'Planner'}_${settings.year}.csv`;
+  const name = `Begroting_${settings.familyName || 'Gezin'}_${settings.year}.csv`;
   downloadFile(csv, name, 'text/csv;charset=utf-8;');
 }
 
 function buildBackup() {
   const years = {};
   listYearKeys().forEach(key => {
-    const year = key.replace('familyBudget_v', '');
+    const year = key.startsWith(YEAR_PREFIX) ? key.slice(YEAR_PREFIX.length) : '';
     const data = readJSON(key, {});
     if (data && typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length) {
       years[year] = data;
     }
   });
   return {
-    app: 'family-budget',
+    app: 'family-budget-nl',
     version: 1,
     exportedAt: new Date().toISOString(),
     settings: { ...settings },
@@ -1176,7 +1219,7 @@ function buildBackup() {
 
 function backupValid(data) {
   return Boolean(data
-    && data.app === 'family-budget'
+    && (data.app === 'family-budget-nl' || data.app === 'family-budget')
     && data.version === 1
     && data.settings
     && typeof data.settings === 'object'
@@ -1193,10 +1236,11 @@ function restoreBackup(data) {
   settings = {
     familyName: typeof data.settings.familyName === 'string' ? data.settings.familyName : '',
     year: year >= 2000 && year <= 2100 ? year : new Date().getFullYear(),
-    currency: CURRENCIES.includes(data.settings.currency) ? data.settings.currency : 'THB'
+    currency: CURRENCIES.includes(data.settings.currency) ? data.settings.currency : 'EUR'
   };
   categories = data.categories.map(name => String(name || '').trim()).filter(Boolean);
   if (!categories.length) categories = DEFAULT_CATEGORIES.slice();
+  if (!categories.includes(FALLBACK_CATEGORY)) categories.push(FALLBACK_CATEGORY);
   templates = data.templates.filter(item => item && typeof item === 'object');
   saveSettings();
   saveCategories();
@@ -1207,16 +1251,16 @@ function restoreBackup(data) {
     }
   });
   allTransactions = readYear(settings.year);
-  selectedCategory = categories[0] || 'Other';
+  selectedCategory = categories[0] || FALLBACK_CATEGORY;
   if (currentMonthIdx > 11) currentMonthIdx = 0;
 }
 
 function resetAllData() {
   listYearKeys().forEach(key => localStorage.removeItem(key));
-  localStorage.removeItem('budgetSettings');
-  localStorage.removeItem('budgetCategories');
-  localStorage.removeItem('budgetTemplates');
-  settings = { familyName: '', year: new Date().getFullYear(), currency: 'THB' };
+  localStorage.removeItem(KEY_SETTINGS);
+  localStorage.removeItem(KEY_CATEGORIES);
+  localStorage.removeItem(KEY_TEMPLATES);
+  settings = { familyName: '', year: new Date().getFullYear(), currency: 'EUR' };
   categories = DEFAULT_CATEGORIES.slice();
   templates = [];
   allTransactions = {};
@@ -1271,11 +1315,11 @@ function handleSettingsSubmit(event) {
   const year = parseInt(document.getElementById('settingYear').value, 10);
   const currency = document.getElementById('settingCurrency').value;
   if (!year || year < 2000 || year > 2100) {
-    error.textContent = 'Enter a year from 2000 to 2100.';
+    error.textContent = 'Vul een jaar van 2000 tot 2100 in.';
     return;
   }
   if (!CURRENCIES.includes(currency)) {
-    error.textContent = 'Choose a currency from the list.';
+    error.textContent = 'Kies een valuta uit de lijst.';
     return;
   }
   const previousYear = settings.year;
@@ -1288,7 +1332,7 @@ function handleSettingsSubmit(event) {
   closeSettings();
   refreshVisible();
   renderMonthTabs();
-  announce('Settings saved.');
+  announce('Instellingen opgeslagen.');
 }
 
 /* —— events —— */
@@ -1308,7 +1352,7 @@ function bindEvents() {
     const toggle = document.querySelector('.nav-toggle');
     const open = header.classList.toggle('nav-open');
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    toggle.setAttribute('aria-label', open ? 'Menu sluiten' : 'Menu openen');
   });
   document.getElementById('primary-menu').addEventListener('click', event => {
     const link = event.target.closest('[data-view]');
@@ -1353,28 +1397,28 @@ function bindEvents() {
     if (!addCategory(input.value)) return;
     input.value = '';
     refreshVisible();
-    announce('Category added.');
+    announce('Categorie toegevoegd.');
   });
   document.getElementById('settingsForm').addEventListener('submit', handleSettingsSubmit);
   document.getElementById('resetConfirm').addEventListener('input', event => {
-    document.getElementById('resetBtn').disabled = event.target.value.trim() !== 'RESET';
+    document.getElementById('resetBtn').disabled = event.target.value.trim() !== RESET_WORD;
   });
   document.getElementById('resetConfirm').addEventListener('keydown', event => {
-    if (event.key === 'Enter' && event.target.value.trim() === 'RESET') {
+    if (event.key === 'Enter' && event.target.value.trim() === RESET_WORD) {
       event.preventDefault();
       document.getElementById('resetBtn').click();
     }
   });
   document.getElementById('resetBtn').addEventListener('click', () => {
-    if (document.getElementById('resetConfirm').value.trim() !== 'RESET') return;
+    if (document.getElementById('resetConfirm').value.trim() !== RESET_WORD) return;
     resetAllData();
     closeSettings();
     showView('month');
-    announce('All budget data was erased.');
+    announce('Alle budgetgegevens zijn gewist.');
   });
   document.getElementById('exportCsvBtn').addEventListener('click', () => {
     exportToCSV();
-    announce(`Exported ${settings.year}.`);
+    announce(`${settings.year} geëxporteerd.`);
   });
   document.getElementById('importCsvBtn').addEventListener('click', () => document.getElementById('csvFileInput').click());
   document.getElementById('csvFileInput').addEventListener('change', event => {
@@ -1386,7 +1430,8 @@ function bindEvents() {
       allTransactions = readYear(settings.year);
       closeSettings();
       refreshVisible();
-      announce(`Imported ${result.count} transaction${result.count === 1 ? '' : 's'}${result.skipped ? `, skipped ${result.skipped}` : ''}.`);
+      const noun = result.count === 1 ? 'transactie' : 'transacties';
+      announce(`${result.count} ${noun} geïmporteerd${result.skipped ? `, ${result.skipped} overgeslagen` : ''}.`);
     });
   });
   document.getElementById('printBtn').addEventListener('click', () => {
@@ -1396,8 +1441,8 @@ function bindEvents() {
   document.getElementById('backupBtn').addEventListener('click', () => {
     const backup = buildBackup();
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadFile(JSON.stringify(backup, null, 2), `FamilyBudget_backup_${stamp}.json`, 'application/json');
-    announce('Backup downloaded.');
+    downloadFile(JSON.stringify(backup, null, 2), `FamilyBudgetNL_reservekopie_${stamp}.json`, 'application/json');
+    announce('Reservekopie gedownload.');
   });
   document.getElementById('restoreBtn').addEventListener('click', () => document.getElementById('jsonFileInput').click());
   document.getElementById('jsonFileInput').addEventListener('change', event => {
@@ -1408,16 +1453,19 @@ function bindEvents() {
       let data;
       try { data = JSON.parse(text); } catch (err) { data = null; }
       if (!backupValid(data)) {
-        document.getElementById('settingsError').textContent = 'That file is not a Family Budget backup.';
+        document.getElementById('settingsError').textContent = 'Dit bestand is geen reservekopie van Family Budget NL.';
         return;
       }
       const years = Object.keys(data.years).length;
-      const ok = window.confirm(`Replace all budget data with this backup? It has ${years} year${years === 1 ? '' : 's'}, ${data.categories.length} categories, and ${data.templates.length} templates.`);
+      const yearWord = years === 1 ? 'jaar' : 'jaar';
+      const categoryWord = data.categories.length === 1 ? 'categorie' : 'categorieën';
+      const templateWord = data.templates.length === 1 ? 'sjabloon' : 'sjablonen';
+      const ok = window.confirm(`Alle budgetgegevens vervangen door deze reservekopie? Het bestand heeft ${years} ${yearWord}, ${data.categories.length} ${categoryWord} en ${data.templates.length} ${templateWord}.`);
       if (!ok) return;
       restoreBackup(data);
       closeSettings();
       showView(currentView);
-      announce('Backup restored.');
+      announce('Reservekopie teruggezet.');
     });
   });
   window.addEventListener('hashchange', () => {
@@ -1429,11 +1477,11 @@ function bindEvents() {
 
 function init() {
   migrateMisfiledYears();
-  if (!categories.includes('Other')) {
-    categories.push('Other');
+  if (!categories.includes(FALLBACK_CATEGORY)) {
+    categories.push(FALLBACK_CATEGORY);
     saveCategories();
   }
-  selectedCategory = categories[0] || 'Other';
+  selectedCategory = categories[0] || FALLBACK_CATEGORY;
   bindEvents();
   const hash = location.hash.replace('#', '');
   if (hash === 'settings') {
@@ -1448,8 +1496,12 @@ document.addEventListener('DOMContentLoaded', init);
 
 globalThis.FamilyBudget = {
   MONTHS,
+  MONTHS_SHORT,
   CURRENCIES,
   DEFAULT_CATEGORIES,
+  FALLBACK_CATEGORY,
+  LOCALE,
+  monthIndex,
   parseAmount,
   parseCSVRow,
   buildCSV,

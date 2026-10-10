@@ -1556,8 +1556,13 @@ a:focus-visible {
 @media (max-width: 560px) { .ip-map iframe { height: 220px; } }
 
 /* NetPulse brand */
-.logo { display: inline-flex; align-items: center; }
+.logo { display: inline-flex; align-items: center; min-width: 0; }
 .logo-icon { flex: none; width: 28px; height: 28px; margin-right: var(--nt-space-8); border-radius: 8px; }
+.logo-short { display: none; }
+@media (max-width: 420px) {
+  .logo-full { display: none; }
+  .logo-short { display: inline; }
+}
 .hero-logo { display: block; width: 100%; max-width: 420px; height: auto; margin: 0 auto var(--nt-space-24); border-radius: var(--nt-radius-card); }
 @media (max-width: 560px) { .hero-logo { max-width: 300px; } }
 

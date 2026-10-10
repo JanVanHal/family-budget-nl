@@ -1,57 +1,63 @@
-# Family Budget
+# Family Budget NL
 
-A family budget planner for the month and the year. It runs in the browser, keeps every figure on this device, and uses the same warm-paper layout as [NetPulse](https://janvanhal.github.io/netpulse/) and [UnitPulse](https://janvanhal.github.io/unitpulse/).
+Een gezinsbudget voor de maand en het jaar, in het Nederlands (Nederland). Het draait in de browser, bewaart elk bedrag op dit apparaat, en gebruikt dezelfde warme-papier-opmaak als [NetPulse](https://janvanhal.github.io/netpulse/) en [UnitPulse](https://janvanhal.github.io/unitpulse/).
 
-Live site: https://janvanhal.github.io/family-budget/
+Live site: https://janvanhal.github.io/family-budget-nl/
 
-## Features
+Een nieuw budget start in euro. Bedragen en datums volgen `nl-NL`: `€ 1.234,56` en `15 jan`. Je kunt `12,50` en `12.50` allebei invoeren.
 
-- **Month** — switch months, see balance, income, and expenses, add a transaction, and save quick-add templates.
-- **Year** — net, total income, total expenses, an income-vs-expenses chart, and a monthly table with a total row.
-- **Categories** — yearly expense split, plus add, rename, and delete. Deleting a category asks first and moves its transactions to Other.
-- **Settings** — family name, budget year, and currency. The currency list is USD, EUR, GBP, JPY, THB, CAD, AUD, INR, and BRL. A new budget starts in Thai baht.
-- **Data tools** — import CSV, export CSV, print an A4 report, back up or restore JSON, and reset everything by typing `RESET`.
+## Functies
 
-Charts use Chart.js. Nothing else is loaded from a CDN except the Inter and Source Serif 4 fonts.
+- **Maand** — wissel van maand, zie saldo, inkomsten en uitgaven, voeg een transactie toe en bewaar sjablonen voor snel toevoegen.
+- **Jaar** — netto, totale inkomsten, totale uitgaven, een grafiek van inkomsten en uitgaven, en een maandoverzicht met een totaalrij.
+- **Categorieën** — jaarlijkse verdeling van uitgaven, plus toevoegen, hernoemen en verwijderen. Verwijderen vraagt eerst om bevestiging en zet de transacties op Overig.
+- **Instellingen** — gezinsnaam, begrotingsjaar en valuta. De lijst is EUR, USD, GBP, JPY, THB, CAD, AUD, INR en BRL. Standaard is de euro.
+- **Gegevens** — CSV importeren, CSV exporteren, een A4-overzicht afdrukken, een JSON-reservekopie maken of terugzetten, en alles wissen door `WISSEN` te typen.
 
-## Data storage
+Grafieken gebruiken Chart.js. Verder laden alleen de lettertypen Inter en Source Serif 4 van een CDN.
 
-Everything is in `localStorage` on this browser profile. The keys are the same as the earlier Family Budget app, so opening this site on `janvanhal.github.io` keeps data saved by the previous app:
+Standaardcategorieën: Wonen, Boodschappen, Vervoer, Energie, Vrije tijd, Zorg, Salaris en Overig.
 
-| Key | Contents |
+## Opslag
+
+Alles staat in `localStorage` van dit browserprofiel. De sleutels staan los van de Engelse Family Budget-app, ook als beide sites op `janvanhal.github.io` staan. Wissen of hernoemen hier laat die andere app met rust.
+
+| Sleutel | Inhoud |
 | --- | --- |
-| `budgetSettings` | Family name, budget year, currency |
-| `budgetCategories` | Category names |
-| `budgetTemplates` | Quick-add templates |
-| `familyBudget_v<year>` | Transactions for that year, grouped as `year_monthIndex` (January is `0`) |
+| `budgetSettingsNL` | Gezinsnaam, begrotingsjaar, valuta |
+| `budgetCategoriesNL` | Categorienamen |
+| `budgetTemplatesNL` | Sjablonen voor snel toevoegen |
+| `familyBudgetNL_v<jaar>` | Transacties van dat jaar, gegroepeerd als `jaar_maandindex` (januari is `0`) |
 
-A transaction is `{ id, desc, amount, type, category, date }`. `type` is `expense` or `income`. `date` is an ISO string.
+Een transactie is `{ id, desc, amount, type, category, date }`. `type` is `expense` of `income`. `date` is een ISO-tekenreeks.
 
-No account is required and nothing is sent to a server.
+Er is geen account nodig en er gaat niets naar een server.
 
 ## CSV
 
-Export and import use one header and eight columns:
+Export en import gebruiken één kopregel en acht kolommen:
 
 ```text
-Year,Month,Date,Description,Category,Type,Amount,Currency
+Jaar,Maand,Datum,Omschrijving,Categorie,Soort,Bedrag,Valuta
 ```
 
-Descriptions and categories are quoted, so commas inside them survive. Amounts can use `.` or `,` as the decimal mark (`1234.50` and `1.234,50` both import). Import adds rows. It does not delete transactions already stored.
+Omschrijvingen en categorieën staan tussen aanhalingstekens, zodat een komma erin blijft staan. Bedragen mogen `.` of `,` als decimaalteken hebben (`1234.50` en `1.234,50` worden allebei geïmporteerd). De soort is `uitgave` of `inkomst`.
 
-## Backup
+Een oudere Engelse export werkt ook: maandnamen als `January` en soorten `expense` / `income`. Importeren voegt rijen toe. Het verwijdert geen transacties die al zijn opgeslagen.
 
-**Backup JSON** downloads every year, the category list, quick-add templates, and settings. **Restore JSON** replaces what this browser has stored. Keep a backup before you reset or before you clear site data.
+## Reservekopie
 
-## Local check
+**Reservekopie (JSON)** downloadt elk jaar, de categorielijst, de sjablonen en de instellingen. **Terugzetten (JSON)** vervangt wat deze browser heeft opgeslagen. Een reservekopie van de Engelse Family Budget-app kan ook worden teruggezet. Maak eerst zelf een reservekopie voordat je wist of sitegegevens leegt.
 
-Open `index.html` in a browser, or from this folder:
+## Lokaal controleren
+
+Open `index.html` in een browser, of vanuit deze map:
 
 ```bash
 python3 -m http.server 8080
 node tests/logic.test.js
 ```
 
-## Also from us
+## Ook van ons
 
 [NetPulse](https://janvanhal.github.io/netpulse/) · [UnitPulse](https://janvanhal.github.io/unitpulse/)
