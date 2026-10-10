@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f5f4">
+  <title>Family Budget</title>
+  <link rel="icon" type="image/svg+xml" href="img/family-budget-icon.svg">
+  <meta name="description" content="Family budget planner for the month and the year. Transactions stay in this browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#month" class="logo"><img class="logo-icon" src="img/family-budget-icon.svg" alt="" width="28" height="28">Family Budget</a>
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="primary-menu">
+          <span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>Menu
+        </button>
+        <ul class="nav-links" id="primary-menu">
+          <li><a href="#month" data-view="month" class="active" aria-current="page">Month</a></li>
+          <li><a href="#year" data-view="year">Year</a></li>
+          <li><a href="#categories" data-view="categories">Categories</a></li>
+          <li><button type="button" class="nav-btn" id="openSettings">Settings</button></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="budget-main">
+    <div class="container">
+      <p id="statusBanner" class="status-banner" role="status" hidden></p>
+      <p id="totalsLive" class="visually-hidden" aria-live="polite"></p>
+      <div class="print-only">
+        <h1>Family Budget</h1>
+        <p id="printSubtitle"></p>
+      </div>
+
+      <section id="view-month" aria-labelledby="monthTitle">
+        <div class="view-head">
+          <h1 class="view-title" id="monthTitle">Month</h1>
+          <p class="view-lede" id="monthLede"></p>
+        </div>
+
+        <div class="month-switch">
+          <div class="month-arrows no-print">
+            <button type="button" class="btn btn-outlined" id="monthPrev" aria-label="Previous month">‹</button>
+            <p class="month-current" id="monthCurrent"></p>
+            <button type="button" class="btn btn-outlined" id="monthNext" aria-label="Next month">›</button>
+          </div>
+          <div class="month-tabs" id="monthTabs" role="tablist" aria-label="Months"></div>
+        </div>
+
+        <div class="result-grid stat-grid" id="monthStats">
+          <div class="result-card">
+            <span class="result-label">Balance</span>
+            <p class="stat-value" id="totalBalance">—</p>
+          </div>
+          <div class="result-card">
+            <span class="result-label">Income</span>
+            <p class="stat-value is-income" id="totalIncome">—</p>
+          </div>
+          <div class="result-card">
+            <span class="result-label">Expenses</span>
+            <p class="stat-value is-expense" id="totalExpense">—</p>
+          </div>
+        </div>
+
+        <div class="month-layout">
+          <div class="month-side">
+            <form id="budgetForm" class="tool-panel no-print">
+              <h2>Add transaction</h2>
+              <div class="input-group">
+                <label for="desc">Description</label>
+                <input id="desc" name="desc" type="text" required maxlength="120" placeholder="e.g. Rent" autocomplete="off">
+              </div>
+              <div class="pair-grid">
+                <div class="input-group">
+                  <label for="amount">Amount</label>
+                  <input id="amount" name="amount" type="text" inputmode="decimal" required placeholder="0.00" autocomplete="off">
+                </div>
+                <div class="input-group">
+                  <label for="txDate">Date</label>
+                  <input id="txDate" name="date" type="date" required>
+                </div>
+              </div>
+              <div class="input-group">
+                <span class="result-label" id="typeLabel">Type</span>
+                <div class="type-toggle" role="group" aria-labelledby="typeLabel">
+                  <button type="button" class="btn btn-outlined" id="typeExp" data-type="expense" aria-pressed="true">Expense</button>
+                  <button type="button" class="btn btn-outlined" id="typeInc" data-type="income" aria-pressed="false">Income</button>
+                </div>
+              </div>
+              <div class="input-group">
+                <div class="panel-head">
+                  <span class="result-label" id="categoryLabel">Category</span>
+                  <button type="button" class="btn btn-ghost" id="showAddCategory">+ Add</button>
+                </div>
+                <div id="categorySelector" class="pill-row" role="group" aria-labelledby="categoryLabel"></div>
+                <div id="inlineAddCategory" class="add-row" hidden>
+                  <div class="input-group">
+                    <label for="inlineCategoryName">New category</label>
+                    <input id="inlineCategoryName" type="text" maxlength="40" autocomplete="off">
+                  </div>
+                  <button type="button" class="btn btn-primary" id="inlineCategorySave">Add</button>
+                </div>
+              </div>
+              <p id="formError" class="field-error" role="alert"></p>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save transaction</button>
+                <button type="button" class="btn btn-outlined" id="saveTemplate">Save as template</button>
+              </div>
+            </form>
+
+            <section class="tool-panel no-print" aria-labelledby="quickAddTitle">
+              <h2 id="quickAddTitle">Quick add</h2>
+              <ul id="templatesContainer" class="template-list"></ul>
+            </section>
+          </div>
+
+          <div class="month-main">
+            <div class="chart-grid">
+              <section class="tool-panel" aria-labelledby="pieTitle">
+                <h2 id="pieTitle">Expense distribution</h2>
+                <div class="chart-box"><canvas id="pieChart" aria-label="Expenses by category this month"></canvas></div>
+                <p id="pieEmpty" class="empty-state" hidden>No expenses this month</p>
+              </section>
+              <section class="tool-panel" aria-labelledby="barTitle">
+                <h2 id="barTitle">Cash flow</h2>
+                <div class="chart-box"><canvas id="barChart" aria-label="Income and expenses this month"></canvas></div>
+              </section>
+            </div>
+
+            <section class="tool-panel" aria-labelledby="tableTitle">
+              <div class="panel-head">
+                <h2 id="tableTitle">Transactions</h2>
+                <span class="pill pill-tint" id="transCount">0</span>
+              </div>
+              <div class="table-wrap">
+                <table class="conv-table tx-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Date</th>
+                      <th scope="col">Description</th>
+                      <th scope="col">Category</th>
+                      <th scope="col" class="num">Amount</th>
+                      <th scope="col" class="no-print"><span class="visually-hidden">Delete</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="transactionList"></tbody>
+                </table>
+              </div>
+              <p id="emptyState" class="empty-state" hidden>No transactions this month</p>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-year" hidden aria-labelledby="yearTitle">
+        <div class="view-head">
+          <h1 class="view-title" id="yearTitle">Year</h1>
+          <p class="view-lede" id="yearLede"></p>
+        </div>
+        <div class="result-grid stat-grid">
+          <div class="result-card">
+            <span class="result-label">Net</span>
+            <p class="stat-value" id="yearlyNet">—</p>
+          </div>
+          <div class="result-card">
+            <span class="result-label">Total income</span>
+            <p class="stat-value is-income" id="yearlyIncome">—</p>
+          </div>
+          <div class="result-card">
+            <span class="result-label">Total expenses</span>
+            <p class="stat-value is-expense" id="yearlyExpense">—</p>
+          </div>
+        </div>
+        <section class="tool-panel" aria-labelledby="yearChartTitle">
+          <h2 id="yearChartTitle">Income vs expenses</h2>
+          <div class="chart-box chart-box-tall"><canvas id="yearlyChart" aria-label="Monthly income and expenses"></canvas></div>
+        </section>
+        <section class="tool-panel" aria-labelledby="yearTableTitle">
+          <h2 id="yearTableTitle">Monthly breakdown</h2>
+          <div class="table-wrap">
+            <table class="conv-table">
+              <thead>
+                <tr>
+                  <th scope="col">Month</th>
+                  <th scope="col" class="num">Income</th>
+                  <th scope="col" class="num">Expenses</th>
+                  <th scope="col" class="num">Net</th>
+                </tr>
+              </thead>
+              <tbody id="yearlyTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="view-categories" hidden aria-labelledby="catTitle">
+        <div class="view-head">
+          <h1 class="view-title" id="catTitle">Categories</h1>
+          <p class="view-lede" id="catLede"></p>
+        </div>
+        <div class="split-2">
+          <section class="tool-panel" aria-labelledby="distChartTitle">
+            <h2 id="distChartTitle">Expense distribution</h2>
+            <div class="chart-box chart-box-tall"><canvas id="yearlyDistributionPieChart" aria-label="Yearly expenses by category"></canvas></div>
+            <p id="distEmpty" class="empty-state" hidden>No expenses this year</p>
+          </section>
+          <section class="tool-panel" aria-labelledby="distTableTitle">
+            <h2 id="distTableTitle">Breakdown</h2>
+            <div class="table-wrap">
+              <table class="conv-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Category</th>
+                    <th scope="col" class="num">Total</th>
+                    <th scope="col" class="num">%</th>
+                  </tr>
+                </thead>
+                <tbody id="yearlyDistributionTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+        <section class="tool-panel no-print" aria-labelledby="manageTitle">
+          <h2 id="manageTitle">Manage categories</h2>
+          <form id="addCategoryForm" class="add-row">
+            <div class="input-group">
+              <label for="newCategory">New category</label>
+              <input id="newCategory" type="text" maxlength="40" required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+          </form>
+          <p id="categoryError" class="field-error" role="alert"></p>
+          <ul id="categoryManager" class="cat-manage"></ul>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <a href="#month" class="logo"><img class="logo-icon" src="img/family-budget-icon.svg" alt="" width="28" height="28">Family Budget</a>
+      <p class="footer-sister">Also from us: <a href="https://janvanhal.github.io/netpulse/">NetPulse</a> · <a href="https://janvanhal.github.io/unitpulse/">UnitPulse</a></p>
+      <p class="footer-copy">Data stays in this browser. Use Backup in Settings to keep a copy.</p>
+    </div>
+  </footer>
+
+  <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
+    <div class="tool-panel">
+      <div class="panel-head">
+        <h2 id="settingsTitle">Settings</h2>
+        <button type="button" class="btn btn-ghost-text" id="closeSettings">Close</button>
+      </div>
+      <form id="settingsForm">
+        <div class="input-group">
+          <label for="settingFamilyName">Family name</label>
+          <input id="settingFamilyName" type="text" maxlength="80" autocomplete="off" placeholder="e.g. Smith">
+        </div>
+        <div class="pair-grid">
+          <div class="input-group">
+            <label for="settingYear">Budget year</label>
+            <input id="settingYear" type="number" inputmode="numeric" min="2000" max="2100" required>
+          </div>
+          <div class="input-group">
+            <label for="settingCurrency">Currency</label>
+            <select id="settingCurrency">
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="JPY">JPY (¥)</option>
+              <option value="THB" selected>THB (฿)</option>
+              <option value="CAD">CAD ($)</option>
+              <option value="AUD">AUD ($)</option>
+              <option value="INR">INR (₹)</option>
+              <option value="BRL">BRL (R$)</option>
+            </select>
+          </div>
+        </div>
+        <p id="settingsError" class="field-error" role="alert"></p>
+        <button type="submit" class="btn btn-primary">Save changes</button>
+      </form>
+
+      <div class="settings-block">
+        <h3>Data</h3>
+        <p class="panel-note">Import adds rows from a CSV. It does not delete what is already saved. Backup and restore cover every year, plus categories, templates, and settings.</p>
+        <div class="data-actions">
+          <button type="button" class="btn btn-outlined" id="importCsvBtn">Import CSV</button>
+          <button type="button" class="btn btn-outlined" id="exportCsvBtn">Export CSV</button>
+          <button type="button" class="btn btn-outlined" id="printBtn">Print</button>
+          <button type="button" class="btn btn-outlined" id="backupBtn">Backup JSON</button>
+          <button type="button" class="btn btn-outlined" id="restoreBtn">Restore JSON</button>
+        </div>
+        <input id="csvFileInput" type="file" accept=".csv,text/csv" hidden>
+        <input id="jsonFileInput" type="file" accept="application/json,.json" hidden>
+      </div>
+
+      <div class="settings-block">
+        <h3>Reset all data</h3>
+        <p class="panel-note">Type RESET to erase every year, category, template, and setting stored in this browser.</p>
+        <div class="input-group">
+          <label for="resetConfirm">Confirmation</label>
+          <input id="resetConfirm" type="text" autocomplete="off" placeholder="RESET">
+        </div>
+        <button type="button" class="btn btn-danger" id="resetBtn" disabled>Reset all data</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
